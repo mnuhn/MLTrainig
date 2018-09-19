@@ -8,18 +8,18 @@ from lxml import etree
 #1. do linear regression with dataset in tensorflow
 
 # process a bunch of tcx files and return pandas data frame
-def process_files(filelist, powzones, hrzones, cadzones):
+def process_files(filelist, cols, powzones, hrzones, cadzones):
 
     output = []
     for ifile in filelist:
         output.append(process_file(ifile, powzones, hrzones, cadzones))
 
     # Create numpy array and feed it into tensorflow dataset 
-    outputnp = np.array(output)
-    #pdoutput = pd.data_frame(output, index=index)
+    outputnp = np.array(output) 
+    pdoutput = pd.DataFrame(outputnp, columns=cols)
     #dataset = tf.data.Dataset.from_tensor_slices(outputnp)
     
-    return outputnp
+    return pdoutput
 
 # process tcx file, use power and heartrate and cadence zones as input and 
 # return vector with all desired quantities

@@ -1,8 +1,15 @@
 import re, sys, glob
+from os.path import expanduser
 import numpy as np
 from lxml import etree
 
 from process_tcx_v4 import process_file, process_files, printtags
+from estimator_v2 import linreg
+
+# columns, features, labels
+COLUMNS = ['tottime', 'avwatts', 'avhr', 'avcad', 'best20minpower']
+FEATURES = COLUMNS[:-1]
+LABEL = COLUMNS[-1]
 
 # power zones
 powerzones = []
@@ -34,13 +41,18 @@ def main(argv=None):
     #inputfile = "GuelphSwimBike.tcx" 
     #print(process_file(inputfile, powerzones, hrzones, cadzones))
 
-    inputfolder = "/home/rummelm/local_files/tapiriik/"
+    #inputfolder = "/home/rummelm/local_files/tapiriik/"
+    inputfolder = expanduser("~")+"/local_files/tapiriik/"
     #inputfiles = glob.glob(inputfolder+"*2018-08-14*")
     #inputfiles = glob.glob(inputfolder+"*half*")
-    inputfiles = glob.glob(inputfolder+"*Pennsyl*")
-    print(process_files(inputfiles, powerzones, hrzones, cadzones))
+    inputfiles = glob.glob(inputfolder+"*Pennsyl*") 
+    #print(inputfiles)
+    dataset = process_files(inputfiles, COLUMNS, powerzones, hrzones, cadzones) 
+    print(dataset)
     #print(np.random.sample((4,6)))
     
+    # Linear Regression
+    linreg(dataset, 0.85, FEATURES, LABEL)
 
 if __name__ == "__main__":
     sys.exit(main())
