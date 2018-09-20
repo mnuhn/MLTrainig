@@ -2,9 +2,10 @@ import re, sys, glob
 from os.path import expanduser
 import numpy as np
 from lxml import etree
+import matplotlib.pyplot as plt
 
 from process_tcx_v4 import process_file, process_files, printtags
-from estimator_v2 import linreg
+from estimator_v2 import normalize_array, linreg_rough, linreg_detailed
 
 # columns, features, labels
 COLUMNS = ['tottime', 'avwatts', 'avhr', 'avcad', 'best20minpower']
@@ -52,7 +53,8 @@ def main(argv=None):
     #print(np.random.sample((4,6)))
     
     # Linear Regression
-    linreg(dataset, 0.85, FEATURES, LABEL)
+    #print(linreg_rough(dataset, 0.85, FEATURES, LABEL))
+    linreg_detailed(dataset, 0.85, FEATURES, LABEL)
 
 if __name__ == "__main__":
     sys.exit(main())

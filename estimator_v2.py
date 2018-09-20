@@ -1,19 +1,3 @@
-#  Copyright 2016 The TensorFlow Authors. All Rights Reserved.
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-from __future__ import absolute_import
-from __future__ import division
 from __future__ import print_function
 
 import itertools
@@ -22,21 +6,23 @@ import pandas as pd
 import tensorflow as tf
 
 import numpy as np
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 #from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition, mark_inset)
 import sys
 
 #tf.logging.set_verbosity(tf.logging.INFO)
 
-# Define linear regression routine
-def linreg(dataset, splitpercentage, FEATURES, LABEL):
+# Define linear regression routine: use architecture that is easily switched
+# to DNN (same layout that has been used for axion stuff). Not very suited though
+# to extracting standard info like bias and slope
+def linreg_rough(dataset, splitpercentage, FEATURES, LABEL):
 
     # option to only use fraction of shuffled entries 
     fracuse = 1.0
     dataset = dataset.sample(frac=fracuse)
     num_rows = dataset.shape[0]
     
-     # split full_set into training set and test set
+    # split full_set into training set and test set
     split_testtrain = int(splitpercentage*num_rows)
     training_set = dataset[:split_testtrain].reset_index(drop=True)
     test_set = dataset[split_testtrain:].reset_index(drop=True)
@@ -44,22 +30,93 @@ def linreg(dataset, splitpercentage, FEATURES, LABEL):
     # Feature cols
     feature_cols = [tf.contrib.layers.real_valued_column(k)
                   for k in FEATURES]
-
+    
     # Build the Estimator for linear regression
-    #model = tf.estimator.LinearRegressor(feature_columns=feature_cols)
+    model = tf.estimator.LinearRegressor(feature_columns=feature_cols)
     # Build a DNNRegressor, with 2x"nodes"-unit hidden layers, with the feature columns
     # defined above as input.
-    nodes = 2
-    model = tf.estimator.DNNRegressor(
-        hidden_units=[nodes, nodes], feature_columns=feature_cols)
+    #nodes = 200
+    #model = tf.estimator.DNNRegressor(
+    #    hidden_units=[nodes, nodes], feature_columns=feature_cols)
 
     # Train the model.
     # By default, the Estimators log output every 100 steps.
     #model.train(input_fn=lambda: input_fn(training_set, FEATURES, LABEL), steps=10000)
     model.train(input_fn=lambda: input_fn(training_set, FEATURES, LABEL), steps=100)
-    
-    #return [0,1,0]
 
+    # Evaluate how the model performs on data it has not yet seen.
+    eval_result = model.evaluate(input_fn=lambda: input_fn(test_set, FEATURES, LABEL), steps=1)
+
+    # get variable names and values
+    varnames = model.get_variable_names()
+
+    return eval_result
+
+# more pedestrian linear regression that gives more detailed information
+def linreg_detailed(dataset, splitpercentage, FEATURES, LABEL):
+
+    # Parameters
+    rng = np.random
+    learning_rate = 0.01
+    training_epochs = 1000
+    display_step = 50
+
+    # for now select only one FEATURE column as x-axis and LABEL as y-axis
+    train_X = np.asarray(dataset['avhr'].values)
+    train_Y = np.asarray(dataset[LABEL].values)
+
+    # Normalize to zero mean and standard deviation one
+    train_X = normalize_array(train_X)
+    train_Y = normalize_array(train_Y)
+    n_samples = train_X.shape[0]
+    
+    # tf Graph Input
+    X = tf.placeholder("float")
+    Y = tf.placeholder("float")
+
+    # Set model weights
+    W = tf.Variable(rng.randn(), name="weight")
+    b = tf.Variable(rng.randn(), name="bias")
+
+    # Construct a linear model
+    pred = tf.add(tf.multiply(X, W), b)
+
+    # Mean squared error
+    cost = tf.reduce_sum(tf.pow(pred-Y, 2))/(2*n_samples)
+    # Gradient descent
+    #  Note, minimize() knows to modify W and b because Variable objects are trainable=True by default
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
+
+    # Initialize the variables (i.e. assign their default value)
+    init = tf.global_variables_initializer()
+
+
+    # Start training
+    with tf.Session() as sess:
+
+        # Run the initializer
+        sess.run(init)
+
+        # Fit all training data
+        for epoch in range(training_epochs):
+            for (x, y) in zip(train_X, train_Y):
+                sess.run(optimizer, feed_dict={X: x, Y: y})
+
+            # Display logs per epoch step
+            if (epoch+1) % display_step == 0:
+                c = sess.run(cost, feed_dict={X: train_X, Y:train_Y})
+                print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(c), \
+                    "W=", sess.run(W), "b=", sess.run(b))
+
+        print("Optimization Finished!")
+        training_cost = sess.run(cost, feed_dict={X: train_X, Y: train_Y})
+        print("Training cost=", training_cost, "W=", sess.run(W), "b=", sess.run(b), '\n')
+
+        # Graphic display
+        plt.plot(train_X, train_Y, 'ro', label='Original data')
+        plt.plot(train_X, sess.run(W) * train_X + sess.run(b), label='Fitted line')
+        plt.legend()
+        plt.show()
 
 # Define input data sets for train and test data
 def input_fn(data_set, features, label):
@@ -72,4 +129,9 @@ def input_fn_pred(data_set, features):
     feature_cols = {k: tf.constant(data_set[k].values) for k in features}
     return feature_cols
 
-
+# Normalize array to mean zero and standard deviation one
+def normalize_array(A):
+    A = np.array(A)
+    mu = np.mean(A, axis=0)
+    sigma = np.std(A, axis=0)
+    return (A - mu)/sigma
