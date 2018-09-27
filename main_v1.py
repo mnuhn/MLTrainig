@@ -5,7 +5,7 @@ from lxml import etree
 import matplotlib.pyplot as plt
 
 from process_tcx_v4 import process_file, process_files, printtags
-from estimator_v2 import normalize_array, linreg_rough, linreg_detailed
+from estimator_v2 import normalize_array, linreg_rough, linreg_detailed, linreg_multidim
 
 # columns, features, labels
 COLUMNS = ['tottime', 'avwatts', 'avhr', 'avcad', 'best20minpower']
@@ -54,7 +54,12 @@ def main(argv=None):
     
     # Linear Regression
     #print(linreg_rough(dataset, 0.85, FEATURES, LABEL))
-    linreg_detailed(dataset, 0.85, FEATURES, LABEL)
+    #FEATURE = FEATURES[2]
+    #linreg_detailed(dataset, 0.85, FEATURE, LABEL)
+    #print("1dim linreg with feature "+FEATURE)
+
+    # Multidim linear Regression
+    linreg_multidim(dataset, 0.85, FEATURES, LABEL)
 
 if __name__ == "__main__":
     sys.exit(main())

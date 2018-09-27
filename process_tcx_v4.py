@@ -4,9 +4,6 @@ import pandas as pd
 import tensorflow as tf
 from lxml import etree
 
-#TODO:
-#1. do linear regression with dataset in tensorflow
-
 # process a bunch of tcx files and return pandas data frame
 def process_files(filelist, cols, powzones, hrzones, cadzones):
 
