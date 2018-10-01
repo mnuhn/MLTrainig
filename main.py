@@ -4,8 +4,8 @@ import numpy as np
 from lxml import etree
 import matplotlib.pyplot as plt
 
-from process_tcx_v4 import process_file, process_files, printtags
-from estimator_v2 import normalize_array, linreg_rough, linreg_detailed, linreg_multidim
+from process_tcx import process_file, process_files, printtags
+from estimator import normalize_array, linreg_rough, linreg_detailed, linreg_multidim
 
 # columns, features, labels
 COLUMNS = ['actdate', 'tottime', 'avwatts', 'avhr', 'avcad', 'best20minpower']
@@ -49,13 +49,17 @@ def main(argv=None):
     #inputfiles = glob.glob(inputfolder+"*Pennsyl*") 
     
     inputfolder = expanduser("~")+"/Dropbox/MLTraining/3month/"
-    inputfiles = glob.glob(inputfolder+"*Penns*")
+    inputfiles = glob.glob(inputfolder+"*")
     #inputfiles = glob.glob(inputfolder+"*P2A*")
     #printtags(inputfiles[0],100)
     
     #print(inputfiles)
     dataset = process_files(inputfiles, COLUMNS, powerzones, hrzones, cadzones) 
     print(dataset)
+    datetest = dataset['actdate'].values
+    for i in range(len(datetest)-1):
+        testdiff = np.datetime64(datetest[i+1],'D')-np.datetime64(datetest[i],'D')
+        print(testdiff)
     
     # Onedim Linear Regression
     #print(linreg_rough(dataset, 0.85, FEATURES, LABEL))
