@@ -9,7 +9,9 @@ def process_files(filelist, cols, powzones, hrzones, cadzones):
 
     output = []
     for ifile in filelist:
-        output.append(process_file(ifile, powzones, hrzones, cadzones))
+        processfile = process_file(ifile, powzones, hrzones, cadzones)
+        if processfile != None:
+            output.append(processfile)
 
     # Create numpy array and feed it into tensorflow dataset 
     outputnp = np.array(output) 
@@ -17,6 +19,7 @@ def process_files(filelist, cols, powzones, hrzones, cadzones):
     #dataset = tf.data.Dataset.from_tensor_slices(outputnp)
     
     return pdoutput
+    #return outputnp
 
 # process tcx file, use power and heartrate and cadence zones as input and 
 # return vector with all desired quantities
@@ -30,6 +33,7 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
     acttag = ns1+"Activity"
     timetag = ns1+"Time"
     tottimetag = ns1+"TotalTimeSeconds"
+    datetag = ns1+"Id"
     watttag = ns2+"Watts"
     cadtag = ns1+"Cadence"
     hrtagcat = ns1+"HeartRateBpm"
@@ -51,6 +55,7 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
     avhr = 0.0
     avcad = 0.0
     acttype = " "
+    actdate = " "
     watts = []
     cadences = []
     heartrates = []
@@ -83,6 +88,11 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
             if str(acttype) != "{'Sport': 'Biking'}":
                 print("Warning! Input file is not cycling!")
                 return
+        
+        # Date of activity: time is 4 hours ahead of Westcoast winter time 
+        # so in Greenwich time(?)
+        elif eltag == datetag:
+            actdate = elval
 
         # check time interval of tcx file
         elif eltag == timetag:
@@ -90,6 +100,14 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
                 time1 = float(elval[-7:-1])
             elif time2 == 0.:
                 time2 = float(elval[-7:-1])
+
+        # total time = lap time so we have to add up all lap times    
+        elif eltag == tottimetag:
+            tottime += float(elval)
+            # if total time less than 20 minutes discard:
+            if tottime < 60.*20.:
+                print("Total time less than 20 minutes  - file discarded: "+tcxfile)
+                return
 
         # Power
         elif eltag == watttag:
@@ -130,13 +148,7 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
                 if float(elval) >= hrzones[i] and float(elval) < hrzones[i+1]:
                     hrweights[i] += 1
                     break
-
-
-        # total time = lap time so we have to add up all lap times    
-        elif eltag == tottimetag:
-            tottime += float(elval)
-            #print("Total time (s): "+str(tottime))
-       
+      
         # set hrnext to one if entry is "HeartRateBpm" so in next iteration
         # heartrate value can be saved
         if eltag == hrtagcat:
@@ -144,15 +156,20 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
         else:
             hrnet = 0
 
-    # Check if time difference is set right, otherwise abort and print error
-    if time2-time1 != deltat:
-        print("Time interval in tcx file is "+str(time2-time1)+" s. But set time interval is "+str(deltat)+" s. Abort!!!")
-        sys.exit(0)
+    # if there is no cadence data (= cadence empty or zero) throw away
+    if cadences == [] or np.average(cadences) == 0.:
+        print("No cadence data - file discarded: "+tcxfile)
+        return
 
     # if there is no power data (= watts empty or zero) throw away
     if watts == [] or np.average(watts) == 0.:
-        print("No wattage data")
+        print("No wattage data - file discarded: "+tcxfile)
         return
+
+    # Check if time difference is set right, otherwise abort and print error
+    if time2-time1 != deltat:
+        print("Time interval in tcx file "+tcxfile+" is "+str(time2-time1)+" s. But set time interval is "+str(deltat)+" s. Abort!!!")
+        sys.exit(0)
 
     # Calculate averages
     avwatts = np.average(watts)
@@ -169,7 +186,7 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
 
     # Return vector of desired quantities
     #return [acttype, tottime, avwatts, avhr, avcad, powweights, hrweights, cadweights, best20minpower]
-    return [tottime, avwatts, avhr, avcad, best20minpower]
+    return [actdate, tottime, avwatts, avhr, avcad, best20minpower]
 
 # test routine to find out what the tags are etc
 def printtags(tcxfile,nprint):

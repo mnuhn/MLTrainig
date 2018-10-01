@@ -8,7 +8,7 @@ from process_tcx_v4 import process_file, process_files, printtags
 from estimator_v2 import normalize_array, linreg_rough, linreg_detailed, linreg_multidim
 
 # columns, features, labels
-COLUMNS = ['tottime', 'avwatts', 'avhr', 'avcad', 'best20minpower']
+COLUMNS = ['actdate', 'tottime', 'avwatts', 'avhr', 'avcad', 'best20minpower']
 FEATURES = COLUMNS[:-1]
 LABEL = COLUMNS[-1]
 
@@ -43,23 +43,28 @@ def main(argv=None):
     #print(process_file(inputfile, powerzones, hrzones, cadzones))
 
     #inputfolder = "/home/rummelm/local_files/tapiriik/"
-    inputfolder = expanduser("~")+"/local_files/tapiriik/"
+    #inputfolder = expanduser("~")+"/local_files/tapiriik/"
     #inputfiles = glob.glob(inputfolder+"*2018-08-14*")
     #inputfiles = glob.glob(inputfolder+"*half*")
-    inputfiles = glob.glob(inputfolder+"*Pennsyl*") 
+    #inputfiles = glob.glob(inputfolder+"*Pennsyl*") 
+    
+    inputfolder = expanduser("~")+"/Dropbox/MLTraining/3month/"
+    inputfiles = glob.glob(inputfolder+"*Penns*")
+    #inputfiles = glob.glob(inputfolder+"*P2A*")
+    #printtags(inputfiles[0],100)
+    
     #print(inputfiles)
     dataset = process_files(inputfiles, COLUMNS, powerzones, hrzones, cadzones) 
     print(dataset)
-    #print(np.random.sample((4,6)))
     
-    # Linear Regression
+    # Onedim Linear Regression
     #print(linreg_rough(dataset, 0.85, FEATURES, LABEL))
     #FEATURE = FEATURES[2]
     #linreg_detailed(dataset, 0.85, FEATURE, LABEL)
     #print("1dim linreg with feature "+FEATURE)
 
     # Multidim linear Regression
-    linreg_multidim(dataset, 0.85, FEATURES, LABEL)
+    #linreg_multidim(dataset, 0.85, FEATURES, LABEL)
 
 if __name__ == "__main__":
     sys.exit(main())
