@@ -156,8 +156,9 @@ def linreg_multidim(dataset, splitpercentage, FEATURES, LABEL):
     W = tf.Variable(tf.random_normal((n_features, 1)), name="weights")
     b = tf.Variable(tf.constant(0.1, shape=[]), name="bias")
 
-    # Construct a linear model
+    # Construct a linear model, leave out bias for normalized data(TODO maybe)
     pred = tf.add(tf.matmul(X, W), b, name="pred")
+    #pred = tf.matmul(X, W, name="pred")
 
     # Mean squared error
     cost = tf.reduce_mean(tf.square(tf.subtract(Y, pred)), name="loss")

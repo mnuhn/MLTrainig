@@ -7,20 +7,17 @@ import matplotlib.pyplot as plt
 
 from process_tcx import process_file, process_files, printtags
 from estimator import normalize_array, linreg_rough, linreg_detailed, linreg_multidim
-from dates import training_cycles, weighted_mean
+from training_cycle import training_cycles, weighted_mean
 
 # first and last date of training cycle
 firstdate  = np.datetime64('2018-02-14')
 lastdate  = np.datetime64('2018-06-16')
 
-"""# columns, features, labels
-COLUMNS = ['actdate', 'tottime', 'avwatts', 'avhr', 'avcad', 'best20minpower']
-FEATURES = COLUMNS[:-1]
-LABEL = COLUMNS[-1]"""
-
 # columns, features, labels
 COLUMNS_READ = ['actdate', 'tottime', 'avwatts', 'avhr', 'avcad', 'best20minpower']
-COLUMNS_ANALYZE = ['time', 'actdays', 'totavwatts', 'totavhr', 'totavcad', 'best']
+COLUMNS_ANALYZE = ['tottime', 'pre_tottime', 'pre_pre_tottime', 'restdays', 'avwatts', 'avhr', 'avcad', 'best20minpower']
+FEATURES = COLUMNS_ANALYZE[:-1]
+LABEL = COLUMNS_ANALYZE[-1]
 
 # power zones
 powerzones = []
@@ -67,17 +64,16 @@ def main(argv=None):
     datasetdate = process_files(inputfiles, COLUMNS_READ, powerzones, hrzones, cadzones) 
     print(datasetdate)
 
-    dataset = training_cycles(datasetdate, COLUMNS_ANALYZE, firstdate, lastdate, 10)
+    dataset = training_cycles(datasetdate, COLUMNS_ANALYZE,'10D')
     print(dataset)
-    
-    #print(pd.__version__)
-    #print(myresampler(['1','2','3']))
 
-    """datetest = dataset['actdate'].values
-    for i in range(len(datetest)):
-        testdiff = lastdate - np.datetime64(datetest[i],'D')
-        print(testdiff)"""
-    
+    # Print some Pearson Correlation coefficients
+    print(" ")
+    print("Pearson Correlation coefficients between features and Label:"+LABEL)
+    for col in FEATURES:
+        corrcoef = np.corrcoef(dataset[col].values, dataset[LABEL].values)[0][1]
+        print(col+": "+str(corrcoef))
+
     # Onedim Linear Regression
     #print(linreg_rough(dataset, 0.85, FEATURES, LABEL))
     #FEATURE = FEATURES[2]
@@ -85,7 +81,7 @@ def main(argv=None):
     #print("1dim linreg with feature "+FEATURE)
 
     # Multidim linear Regression
-    #linreg_multidim(dataset, 0.85, FEATURES, LABEL)
+    linreg_multidim(dataset, 0.85, FEATURES, LABEL)
 
 if __name__ == "__main__":
     sys.exit(main())
