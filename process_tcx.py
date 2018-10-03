@@ -17,7 +17,12 @@ def process_files(filelist, cols, powzones, hrzones, cadzones):
     outputnp = np.array(output) 
     pdoutput = pd.DataFrame(outputnp, columns=cols)
     #dataset = tf.data.Dataset.from_tensor_slices(outputnp)
-    
+
+    # Convert datatypes to numeric except dates
+    #colstonumeric = pdoutput.columns.drop('actdate')
+    cols = pdoutput.columns
+    pdoutput[cols] = pdoutput[cols].apply(pd.to_numeric, errors='ignore')
+
     return pdoutput
     #return outputnp
 

@@ -1,16 +1,26 @@
 import re, sys, glob
 from os.path import expanduser
 import numpy as np
+import pandas as pd
 from lxml import etree
 import matplotlib.pyplot as plt
 
 from process_tcx import process_file, process_files, printtags
 from estimator import normalize_array, linreg_rough, linreg_detailed, linreg_multidim
+from dates import training_cycles, weighted_mean
 
-# columns, features, labels
+# first and last date of training cycle
+firstdate  = np.datetime64('2018-02-14')
+lastdate  = np.datetime64('2018-06-16')
+
+"""# columns, features, labels
 COLUMNS = ['actdate', 'tottime', 'avwatts', 'avhr', 'avcad', 'best20minpower']
 FEATURES = COLUMNS[:-1]
-LABEL = COLUMNS[-1]
+LABEL = COLUMNS[-1]"""
+
+# columns, features, labels
+COLUMNS_READ = ['actdate', 'tottime', 'avwatts', 'avhr', 'avcad', 'best20minpower']
+COLUMNS_ANALYZE = ['time', 'actdays', 'totavwatts', 'totavhr', 'totavcad', 'best']
 
 # power zones
 powerzones = []
@@ -54,12 +64,19 @@ def main(argv=None):
     #printtags(inputfiles[0],100)
     
     #print(inputfiles)
-    dataset = process_files(inputfiles, COLUMNS, powerzones, hrzones, cadzones) 
+    datasetdate = process_files(inputfiles, COLUMNS_READ, powerzones, hrzones, cadzones) 
+    print(datasetdate)
+
+    dataset = training_cycles(datasetdate, COLUMNS_ANALYZE, firstdate, lastdate, 10)
     print(dataset)
-    datetest = dataset['actdate'].values
-    for i in range(len(datetest)-1):
-        testdiff = np.datetime64(datetest[i+1],'D')-np.datetime64(datetest[i],'D')
-        print(testdiff)
+    
+    #print(pd.__version__)
+    #print(myresampler(['1','2','3']))
+
+    """datetest = dataset['actdate'].values
+    for i in range(len(datetest)):
+        testdiff = lastdate - np.datetime64(datetest[i],'D')
+        print(testdiff)"""
     
     # Onedim Linear Regression
     #print(linreg_rough(dataset, 0.85, FEATURES, LABEL))
