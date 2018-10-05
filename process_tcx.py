@@ -7,11 +7,38 @@ from lxml import etree
 # process a bunch of tcx files and return pandas data frame
 def process_files(filelist, cols, powzones, hrzones, cadzones):
 
+    #count how many files failed and for what reason
+    allgood = 0
+    notcycling = 0
+    less20min = 0
+    wrongtimeint = 0
+    nowatts = 0
+    noheartrate = 0
+    nocadence = 0
+
+    # process files
     output = []
+    num_nocad = 0
     for ifile in filelist:
-        processfile = process_file(ifile, powzones, hrzones, cadzones)
+        processfile, filestatus = process_file(ifile, powzones, hrzones, cadzones)
+        # append if output is not empty, i.e. file didn't fail
         if processfile != None:
             output.append(processfile)
+        # count failures/successes
+        if filestatus == "allgood":
+            allgood += 1
+        elif filestatus == "notcycling":
+            notcycling += 1
+        elif filestatus == "less20min":
+            less20min += 1
+        elif filestatus == "wrongtimeint":
+            wrongtimeint += 1
+        elif filestatus == "nowatts":
+            nowatts += 1
+        elif filestatus == "noheartrate":
+            noheartrate += 1
+        elif filestatus == "nocadence":
+            nocadence += 1
 
     # Create numpy array and feed it into tensorflow dataset 
     outputnp = np.array(output) 
@@ -22,6 +49,17 @@ def process_files(filelist, cols, powzones, hrzones, cadzones):
     #colstonumeric = pdoutput.columns.drop('actdate')
     cols = pdoutput.columns
     pdoutput[cols] = pdoutput[cols].apply(pd.to_numeric, errors='ignore')
+
+    # Print summary of failures/successes
+    print(" ")
+    print("Files successfully processed: "+str(allgood))
+    print("Files that are not cycling: "+str(notcycling))
+    print("Files that are less than 20 min: "+str(less20min))
+    print("Files that have the wrong time delta: "+str(wrongtimeint))
+    print("Files that have no watts: "+str(nowatts))
+    print("Files that have no heartrate: "+str(noheartrate))
+    print("Files that have no cadence: "+str(nocadence))
+    print(" ")
 
     return pdoutput
     #return outputnp
@@ -91,8 +129,8 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
             acttype = elatt
             # at the moment only cycling:
             if str(acttype) != "{'Sport': 'Biking'}":
-                print("Warning! Input file is not cycling!")
-                return
+                print("Warning! Input file" +tcxfile+" is not cycling!")
+                return None, "notcycling"
         
         # Date of activity: time is 4 hours ahead of Westcoast winter time 
         # so in Greenwich time(?)
@@ -112,7 +150,7 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
             # if total time less than 20 minutes discard:
             if tottime < 60.*20.:
                 print("Total time less than 20 minutes  - file discarded: "+tcxfile)
-                return
+                return None, "less20min"
 
         # Power
         elif eltag == watttag:
@@ -161,20 +199,31 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
         else:
             hrnet = 0
 
-    # if there is no cadence data (= cadence empty or zero) throw away
-    if cadences == [] or np.average(cadences) == 0.:
-        print("No cadence data - file discarded: "+tcxfile)
-        return
+    # Check if time difference is set right, otherwise abort and print error
+    if time2-time1 != deltat:
+        print("Time interval in tcx file "+tcxfile+" is "+str(time2-time1)+" s. But set time interval is "+str(deltat)+" s. File discarded.")
+        #sys.exit(0)
+        return None, "wrongtimeint"
 
     # if there is no power data (= watts empty or zero) throw away
     if watts == [] or np.average(watts) == 0.:
         print("No wattage data - file discarded: "+tcxfile)
-        return
+        return None, "nowatts"
 
-    # Check if time difference is set right, otherwise abort and print error
-    if time2-time1 != deltat:
-        print("Time interval in tcx file "+tcxfile+" is "+str(time2-time1)+" s. But set time interval is "+str(deltat)+" s. Abort!!!")
-        sys.exit(0)
+    # if there is no heartrate data (= hr empty or zero) throw away
+    if heartrates == [] or np.average(heartrates) == 0.:
+        print("No heartrate data - file discarded: "+tcxfile)
+        return None, "noheartrate"
+
+    # if there is no cadence data (= cadence empty or zero) throw away
+    if cadences == [] or np.average(cadences) == 0.:
+        print("No cadence data - file discarded: "+tcxfile)
+        return None, "nocadence"
+
+
+    """if np.sum(hrweights) == 0.:
+        print(tcxfile+" something wrong with it")
+        sys.exit(0)"""
 
     # Calculate averages
     avwatts = np.average(watts)
@@ -191,7 +240,8 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
 
     # Return vector of desired quantities
     #return [acttype, tottime, avwatts, avhr, avcad, powweights, hrweights, cadweights, best20minpower]
-    return [actdate, tottime, avwatts, avhr, avcad, best20minpower]
+    #return [actdate, tottime, avwatts, avhr, avcad, best20minpower]
+    return [actdate, tottime, avwatts, avhr, avcad, best20minpower], "allgood"
 
 # test routine to find out what the tags are etc
 def printtags(tcxfile,nprint):
