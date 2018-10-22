@@ -1,11 +1,12 @@
-import re, sys, glob
+from lxml import etree
 from os.path import expanduser
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from lxml import etree
-import matplotlib.pyplot as plt
+import re, sys, glob
 
-from process_tcx import process_file, process_files, printtags
+import process_tcx
+# TODO(mrumm): Change like process_tcx.
 from estimator import normalize_array, linreg_rough, linreg_detailed, linreg_multidim
 from resample import resample, weighted_mean
 
@@ -19,14 +20,14 @@ COLUMNS_ANALYZE = ['tottime', 'pre_tottime', 'pre_pre_tottime', 'restdays', 'avw
 FEATURES = COLUMNS_ANALYZE[:-1]
 LABEL = COLUMNS_ANALYZE[-1]
 
-# power zones
+# Power zones.
 powerzones = []
 deltapow = 50.
 maxpow = 1500.
 for i in range(int(maxpow/deltapow)):
     powerzones.append(deltapow*i)
 
-# heartrate zones
+# Heartrate zones.
 hrzones = []
 deltahr = 10.
 minhr = 40.
@@ -34,7 +35,7 @@ maxhr = 200.
 for i in range(int((maxhr-minhr)/deltahr)):
     hrzones.append(minhr+deltahr*i)
 
-# cadence zones
+# Cadence zones.
 cadzones = [0.]
 deltacad = 10.
 mincad = 30.
@@ -43,11 +44,9 @@ for i in range(int((maxcad-mincad)/deltacad)):
     cadzones.append(mincad+deltacad*i)
 
 def main(argv=None):
-
-    #printtags(inputfile,100)
-
+    #process_tcx.print_tags(inputfile,100)
     #inputfile = "GuelphSwimBike.tcx" 
-    #print(process_file(inputfile, powerzones, hrzones, cadzones))
+    #print(process_tcx.process_file(inputfile, powerzones, hrzones, cadzones))
 
     #inputfolder = "/home/rummelm/local_files/tapiriik/"
     #inputfolder = expanduser("~")+"/local_files/tapiriik/"
@@ -59,10 +58,11 @@ def main(argv=None):
     #inputfolder = expanduser("~")+"/Dropbox/MLTraining/3month/"
     inputfiles = glob.glob(inputfolder+"*")
     #inputfiles = glob.glob(inputfolder+"*2016-09-01_10-35-24_Morning Ride_Cycling*")
-    #printtags(inputfiles[0],100)
+    #process_tcx.print_tags(inputfiles[0],100)
     
     #print(inputfiles)
-    datasetdate = process_files(inputfiles, COLUMNS_READ, powerzones, hrzones, cadzones) 
+    datasetdate = process_tcx.process_files(inputfiles, COLUMNS_READ,
+            powerzones, hrzones, cadzones) 
     print(datasetdate)
 
     dataset = resample(datasetdate, COLUMNS_ANALYZE, '10D')

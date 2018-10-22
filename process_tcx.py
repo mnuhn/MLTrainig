@@ -4,6 +4,16 @@ import pandas as pd
 import tensorflow as tf
 from lxml import etree
 
+class TcxStatus:
+    OK = 0
+    NOT_CYCLING = 1
+    TOO_SHORT = 2
+    WRONG_TIME_INTERVAL = 3
+    NO_POWER_DATA = 4
+    NO_HEART_RATE_DATA = 5
+    NO_CADENCE_DATA = 6
+
+
 # process a bunch of tcx files and return pandas data frame
 def process_files(filelist, cols, powzones, hrzones, cadzones):
 
@@ -25,7 +35,7 @@ def process_files(filelist, cols, powzones, hrzones, cadzones):
         if processfile != None:
             output.append(processfile)
         # count failures/successes
-        if filestatus == "allgood":
+        if filestatus == Tcx.OK:
             allgood += 1
         elif filestatus == "notcycling":
             notcycling += 1
@@ -225,34 +235,29 @@ def process_file(tcxfile, powzones, hrzones, cadzones):
         print(tcxfile+" something wrong with it")
         sys.exit(0)"""
 
-    # Calculate averages
+    # Calculate averages.
     avwatts = np.average(watts)
     avhr = np.average(heartrates)
-    # exclude zeroes for cadence
+    # Exclude zeroes for cadence.
     cadencesnp = np.array(cadences)
     cadencesnonzero = cadencesnp.ravel()[np.flatnonzero(cadencesnp)]
     avcad = np.average(cadencesnonzero) 
 
-    # Normalize power- and heartrate-zones
-    powweights = powweights/np.sum(powweights)
-    hrweights = hrweights/np.sum(hrweights)
-    cadweights = cadweights/np.sum(cadweights)
+    # Normalize power- and heartrate-zones.
+    powweights = powweights / np.sum(powweights)
+    hrweights = hrweights / np.sum(hrweights)
+    cadweights = cadweights / np.sum(cadweights)
 
-    # Return vector of desired quantities
-    #return [acttype, tottime, avwatts, avhr, avcad, powweights, hrweights, cadweights, best20minpower]
-    #return [actdate, tottime, avwatts, avhr, avcad, best20minpower]
-    return [actdate, tottime, avwatts, avhr, avcad, best20minpower], "allgood"
+    # Return vector of desired quantities.
+    return [actdate, tottime, avwatts, avhr, avcad, best20minpower], TcxStatus.OK
 
 # test routine to find out what the tags are etc
-def printtags(tcxfile,nprint):
-
+def print_tags(tcxfile, nprint):
     tree = etree.parse(tcxfile)
     root = tree.getroot()
     ncount  = 0
     for element in root.iter():
-        print(element.tag+", "+str(element.attrib)+", "+element.text)
+        print(element.tag + ", " + str(element.attrib) + ", " + element.text)
         ncount+=1
         if ncount > nprint:
             break
-
-

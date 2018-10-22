@@ -12,26 +12,26 @@ import sys
 
 #tf.logging.set_verbosity(tf.logging.INFO)
 
-# Define linear regression routine: use architecture that is easily switched
-# to DNN (same layout that has been used for axion stuff). Not very suited though
+# Define linear regression routine: use architecture that is easily switched to
+# DNN (same layout that has been used for axion stuff). Not very suited though
 # to extracting standard info like bias and slope
 def linreg_rough(dataset, splitpercentage, FEATURES, LABEL):
 
-    # option to only use fraction of shuffled entries 
+    # Option to only use fraction of shuffled entries.
     fracuse = 1.0
     dataset = dataset.sample(frac=fracuse)
     num_rows = dataset.shape[0]
     
-    # split full_set into training set and test set
+    # Split full_set into training set and test set.
     split_testtrain = int(splitpercentage*num_rows)
     training_set = dataset[:split_testtrain].reset_index(drop=True)
     test_set = dataset[split_testtrain:].reset_index(drop=True)
 
-    # Feature cols
+    # Feature columns:
     feature_cols = [tf.contrib.layers.real_valued_column(k)
                   for k in FEATURES]
     
-    # Build the Estimator for linear regression
+    # Build the estimator for linear regression.
     model = tf.estimator.LinearRegressor(feature_columns=feature_cols)
     # Build a DNNRegressor, with 2x"nodes"-unit hidden layers, with the feature columns
     # defined above as input.
@@ -47,38 +47,38 @@ def linreg_rough(dataset, splitpercentage, FEATURES, LABEL):
     # Evaluate how the model performs on data it has not yet seen.
     eval_result = model.evaluate(input_fn=lambda: input_fn(test_set, FEATURES, LABEL), steps=1)
 
-    # get variable names and values
+    # Get variable names and values.
     varnames = model.get_variable_names()
 
     return eval_result
 
-# more pedestrian linear regression that gives more detailed information
+# More pedestrian linear regression that gives more detailed information.
 def linreg_detailed(dataset, splitpercentage, FEATURE, LABEL):
 
-    # Parameters
+    # Parameters:
     rng = np.random
     learning_rate = 0.01
     training_epochs = 1000
     display_step = 50
 
-    # for now select only one FEATURE column as x-axis and LABEL as y-axis
+    # For now select only one FEATURE column as x-axis and LABEL as y-axis.
     train_X = np.asarray(dataset[FEATURE].values)
     train_Y = np.asarray(dataset[LABEL].values)
 
-    # Normalize to zero mean and standard deviation one
+    # Normalize to zero mean and standard deviation one.
     train_X = normalize_array(train_X)
     train_Y = normalize_array(train_Y)
     n_samples = train_X.shape[0]
     
-    # tf Graph Input
+    # Tensorflow graph inputs.
     X = tf.placeholder("float")
     Y = tf.placeholder("float")
 
-    # Set model weights
+    # Set model weights.
     W = tf.Variable(rng.randn(), name="weight")
     b = tf.Variable(rng.randn(), name="bias")
 
-    # Construct a linear model
+    # Construct a linear model.
     pred = tf.add(tf.multiply(X, W), b)
 
     # Mean squared error
@@ -119,22 +119,22 @@ def linreg_detailed(dataset, splitpercentage, FEATURE, LABEL):
         plt.show()
 
 
-# more pedestrian linear regression that gives more detailed information
+# More pedestrian linear regression that gives more detailed information.
 def linreg_multidim(dataset, splitpercentage, FEATURES, LABEL):
 
-    # Parameters
+    # Parameters:
     rng = np.random
     learning_rate = 0.3
     training_epochs = 1000
     display_step = 50
 
-    # for now select only one FEATURE column as x-axis and LABEL as y-axis
+    # For now select only one FEATURE column as x-axis and LABEL as y-axis.
     train_X = np.asarray(dataset.drop(columns=LABEL).values)
     train_Y = np.asarray(dataset[LABEL].values)
     n_samples = train_X.shape[0]
     n_features = train_X.shape[1]
 
-    # Normalize input and output to zero mean and standard deviation one
+    # Normalize input and output to zero mean and standard deviation one.
     # Important to normalize column by column!
     for i in range(n_features):
         norm_column = normalize_array(train_X[:,i])
@@ -145,37 +145,36 @@ def linreg_multidim(dataset, splitpercentage, FEATURES, LABEL):
             train_X_norm = np.column_stack((train_X_norm,norm_column))
     train_X = train_X_norm
     train_Y = normalize_array(train_Y)
-    # bring train_y into column vector form
+
+    # Bring train_y into column vector form.
     train_Y = train_Y.reshape(-1,1)
 
-    # tf Graph Input
+    # Tensorflow graph input.
     X = tf.placeholder(tf.float32, [None, n_features], "X_in")
     Y = tf.placeholder(tf.float32, [None, 1], "y_in")
 
-    # Set model weights
+    # Set model weights.
     W = tf.Variable(tf.random_normal((n_features, 1)), name="weights")
     b = tf.Variable(tf.constant(0.1, shape=[]), name="bias")
 
-    # Construct a linear model, leave out bias for normalized data(TODO maybe)
+    # Construct a linear model, leave out bias for normalized data.
+    # TODO(mrumm): What do you want to do.
     pred = tf.add(tf.matmul(X, W), b, name="pred")
     #pred = tf.matmul(X, W, name="pred")
 
     # Mean squared error
     cost = tf.reduce_mean(tf.square(tf.subtract(Y, pred)), name="loss")
-    # Gradient descent
-    #  Note, minimize() knows to modify W and b because Variable objects are trainable=True by default
+    # Gradient descent. Note: minimize() knows to modify W and b because
+    # Variable objects are trainable=True by default.
     optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
 
     # Initialize the variables (i.e. assign their default value)
     init = tf.global_variables_initializer()
 
-    # Start training
     with tf.Session() as sess:
-
-        # Run the initializer
         sess.run(init)
 
-        # Fit all training data
+        # Fit all training data.
         for epoch in range(training_epochs):
             sess.run(optimizer, feed_dict={
               X: train_X,
@@ -184,7 +183,7 @@ def linreg_multidim(dataset, splitpercentage, FEATURES, LABEL):
             W_computed = sess.run(W)
             b_computed = sess.run(b)
 
-            # Display logs per epoch step
+            # Display logs per every new epoch.
             if (epoch+1) % display_step == 0:
                 c = sess.run(cost, feed_dict={X: train_X, Y:train_Y})
                 print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(c), \
@@ -203,18 +202,18 @@ def linreg_multidim(dataset, splitpercentage, FEATURES, LABEL):
             plt.show()
 
    
-# Define input data sets for train and test data
+# Define input data sets for train and test data.
 def input_fn(data_set, features, label):
     feature_cols = {k: tf.constant(data_set[k].values) for k in features}
     labels = tf.constant(data_set[label].values)
     return feature_cols, labels
 
-# Define input data sets for prediction data
+# Define input data sets for prediction data.
 def input_fn_pred(data_set, features):
     feature_cols = {k: tf.constant(data_set[k].values) for k in features}
     return feature_cols
 
-# Normalize array to mean zero and standard deviation one
+# Normalize array to mean zero and standard deviation one.
 def normalize_array(A):
     A = np.array(A)
     mu = np.mean(A, axis=0)
